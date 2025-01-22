@@ -75,12 +75,26 @@ def process_packet(packet):
     """
     global cache
     try:
-        source_ip = packet[IP].src if IP in packet else "UNKNOWN"
-        destination_ip = packet[IP].dst if IP in packet else "UNKNOWN"
-        source_mac = packet[Ether].src if Ether in packet else "UNKNOWN"
-        destination_mac = packet[Ether].dst if Ether in packet else "UNKNOWN"
+        # Détection des couches disponibles
         packet_type = get_packet_type(packet)
 
+        # Ne pas remonter les paquets de type UNKNOWN
+        if packet_type == "UNKNOWN":
+            return
+
+        # Extraction des informations en fonction du type de trame
+        if packet_type == "ARP":
+            source_ip = getattr(packet, "psrc", str(packet.getlayer(ARP).fields.get("psrc", "N/A")))
+            destination_ip = getattr(packet, "pdst", str(packet.getlayer(ARP).fields.get("pdst", "N/A")))
+            source_mac = getattr(packet, "hwsrc", str(packet.getlayer(ARP).fields.get("hwsrc", "N/A")))
+            destination_mac = getattr(packet, "hwdst", str(packet.getlayer(ARP).fields.get("hwdst", "N/A")))
+        else:
+            source_ip = packet[IP].src if IP in packet else "N/A"
+            destination_ip = packet[IP].dst if IP in packet else "N/A"
+            source_mac = packet[Ether].src if Ether in packet else "N/A"
+            destination_mac = packet[Ether].dst if Ether in packet else "N/A"
+
+        # Construction des données
         data = {
             "agent_name": config.get("agent_name", "unknown_agent"),
             "source_ip": source_ip,
@@ -137,3 +151,4 @@ if __name__ == "__main__":
 
     # Commencer la capture des trames
     capture_packets(config)
+
