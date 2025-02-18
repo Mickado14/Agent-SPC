@@ -4,6 +4,9 @@ from scapy.all import sniff, ARP
 import time
 import threading
 from datetime import datetime
+import urllib3
+
+urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
 # Chemin du fichier de configuration
 CONFIG_FILE = "../Agent-SPC/config/agent.conf"
@@ -63,9 +66,12 @@ def process_packet(packet):
     global cache
     config = load_config()
     agent_name = config.get("agent_name", "unknown_agent")  # Récupérer le nom de l'agent
+
     try:
         # Vérifiez que le paquet est de type ARP
         if ARP in packet:
+            arp_type = "Request" if packet.op == 1 else "Reply" if packet.op == 2 else "Unknown"
+
             data = {
                 "agent_name": agent_name,  # Nom de l'agent placé en premier
                 "source_ip": packet.psrc if hasattr(packet, "psrc") else None,
@@ -73,9 +79,11 @@ def process_packet(packet):
                 "destination_ip": packet.pdst if hasattr(packet, "pdst") else None,
                 "destination_mac": packet.hwdst if hasattr(packet, "hwdst") else None,
                 "type": "ARP",  # Identification correcte du type
+                "arp_type": arp_type,  # Ajout du type ARP
                 "timestamp": datetime.now().isoformat(),
                 "summary": packet.summary()  # Résumé lisible de la trame
             }
+
             with lock:
                 cache.append(data)
     except Exception as e:
