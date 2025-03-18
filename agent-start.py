@@ -5,6 +5,8 @@ import time
 import threading
 from datetime import datetime
 import urllib3
+import sys
+import subprocess
 
 urllib3.disable_warnings(urllib3.exceptions.InsecureRequestWarning)
 
@@ -100,7 +102,10 @@ def capture_packets(config):
     sniff(prn=process_packet, store=0, filter="arp")
 
 
-if __name__ == "__main__":
+def run_in_deamon():
+    """
+    Exécute le script en mode daemon en arrière-plan
+    """
     config = load_config()
 
     # Lancer le thread d'envoi
@@ -110,3 +115,33 @@ if __name__ == "__main__":
 
     # Commencer la capture des trames ARP
     capture_packets(config)
+
+
+if __name__ == "__main__":
+    if len(sys.argv) != 2:
+        print("Usage: script.py [-deamon|-debug]")
+        sys.exit(1)
+
+    mode = sys.argv[1]
+
+    if mode == "-debug":
+        # Lancer le script normalement avec le mode debug
+        config = load_config()
+
+        # Lancer le thread d'envoi
+        sender_thread = threading.Thread(target=send_to_server, args=(config,))
+        sender_thread.daemon = True
+        sender_thread.start()
+
+        # Commencer la capture des trames ARP
+        capture_packets(config)
+
+    elif mode == "-deamon":
+        # Exécuter le script en mode daemon en arrière-plan avec subprocess
+        subprocess.Popen([sys.executable, __file__, "-debug"], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+        print("Le script fonctionne en mode daemon en arrière-plan.")
+        sys.exit(0)
+
+    else:
+        print("Usage: script.py [-deamon|-debug]")
+        sys.exit(1)
